@@ -8,10 +8,11 @@ Fauzi Rizki Pratama (5025211220)
 
 #### No 1 
 
-Lakukan konfigurasi sesuai dengan peta yang sudah diberikan.
+> Lakukan konfigurasi sesuai dengan peta yang sudah diberikan.
 
 Heiter
 
+````
 nano /etc/bind/named.conf.local
 
 zone "riegel.canyon.d18.com" {
@@ -38,26 +39,142 @@ ganti ip (192.200.3.4) // IP Lawine
 
 
 service bind9 restart
-
+````
 Testing di Freiren:
-
+````
 echo nameserver 10.18.1.3 > /etc/resolv.conf
 ping riegel.canyon.d18.com
-
+````
 <img width="712" alt="image" src="https://github.com/Abhinaya173/JARKOM-MODUL-3-D18-2023/assets/114478450/41102d97-8b8c-4542-83c0-121205631c5c">
 
 
 Testing di Lawine:
-
+````
 echo nameserver 10.18.1.3 > /etc/resolv.conf
 ping granz.channel.d18.com
-
+````
 <img width="736" alt="image" src="https://github.com/Abhinaya173/JARKOM-MODUL-3-D18-2023/assets/114478450/1f418e63-1679-480b-8fb6-8faeaff7e28f">
 
 #### No 2
+> Client yang melalui Switch3 mendapatkan range IP dari [prefix IP].3.16 - [prefix IP].3.32 dan [prefix IP].3.64 - [prefix IP].3.80 (2)
+
+Di Himmel
+
+````
+apt-get update
+apt-get install isc-dhcp-server -y
+
+nano /etc/default/isc-dhcp-server
+masukan “INTERFACES=”eth0”
+
+nano /etc/dhcp/dhcpd.conf
+
+masukkan
+subnet 192.200.1.0 netmask 255.255.255.0 {}
+subnet 192.200.2.0 netmask 255.255.255.0 {}
+
+subnet 192.200.3.0 netmask 255.255.255.0 {
+    range 192.200.3.16 192.200.3.32;
+    range 192.200.3.64 192.200.3.80;
+    option routers 192.200.3.1;
+    option broadcast-address 192.200.3.255;
+    option domain-name-servers 192.200.1.3;
+    default-lease-time 180;
+    max-lease-time 5760;
+````
+
 #### No 3
+> Client yang melalui Switch4 mendapatkan range IP dari [prefix IP].4.12 - [prefix IP].4.20 dan [prefix IP].4.160 - [prefix IP].4.168 (3)
+
+````
+nano /etc/dhcp/dhcpd.conf
+
+subnet 192.200.4.0 netmask 255.255.255.0 {
+    range 192.200.4.12 10.17.4.20;
+    range 192.200.4.160 10.17.4.168;
+    option routers 192.200.4.1;
+    option broadcast-address 192.200.4.255;
+    option domain-name-servers 192.200.1.3;
+    default-lease-time 720;
+    max-lease-time 5760;
+}
+
+service isc-dhcp-server restart
+service isc-dhcp-server status
+````
+
 #### No 4
+
+> Client mendapatkan DNS dari Heiter dan dapat terhubung dengan internet melalui DNS tersebut (4)
+
+
+Pada dasarnya, saat mengatur subner, seluruh Client sudah diatur untuk terhubung ke Heiter
+Di Himmel
+````
+subnet 192.200.3.0 netmask 255.255.255.0 {
+    ...
+    option broadcast-address 192.200.3.255;
+    option domain-name-servers 192.200.1.3;
+    ...
+}
+
+subnet 192.200.4.0 netmask 255.255.255.0 {
+    ...
+    option broadcast-address 192.200.4.255;
+    option domain-name-servers 192.200.1.3;
+    ...
+}
+
+// aura 
+apt-get update
+apt-get install isc-dhcp-relay -y 
+service isc-dhcp-relay start
+
+nano /etc/default/isc-dhcp-relay
+SERVERS=”192.200.1.2”
+
+nano /etc/sysctl.conf
+net.ipv4.ip_forward=1
+
+service isc-dhcp-relay restart
+
+//heiter
+
+echo nameserver 192.200.122.1 >> /etc/resolv.conf
+apt-get update
+apt-get install bind9 -y
+
+nano /etc/bind/named.conf.options
+comment // dnssec-validation auto;
+
+tambahkan
+forwarders {
+    192.200.122.1;
+};
+allow-query{any;};
+
+service bind9 restart
+````
+
 #### No 5
+
+> Lama waktu DHCP server meminjamkan alamat IP kepada Client yang melalui Switch3 selama 3 menit sedangkan pada client yang melalui Switch4 selama 12 menit. Dengan waktu maksimal dialokasikan untuk peminjaman alamat IP selama 96 menit (5)
+Pada dasarnya, ini sudah dilakukan penyetingan saat mengerjakan nomor 2
+
+````
+subnet 192.200.3.0 netmask 255.255.255.0 {
+    ...
+    default-lease-time 180;
+    max-lease-time 5760;
+}
+
+subnet 192.200.4.0 netmask 255.255.255.0 {
+    ...
+    default-lease-time 720;
+    max-lease-time 5760;
+}
+
+````
 
 #### NO 6) Pada masing-masing worker PHP, lakukan konfigurasi virtual host untuk website berikut dengan menggunakan php 7.3.
 install apt-get update dan apt-get install php
